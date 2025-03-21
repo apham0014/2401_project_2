@@ -1,3 +1,6 @@
+// Ahmad Baytamouni 101335293
+// Austin Pham 101333594
+
 #include "defs.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -34,8 +37,12 @@ void event_init(Event *event, System *system, Resource *resource, int status, in
  * @param[out] queue  Pointer to the `EventQueue` to initialize.
  */
 void event_queue_init(EventQueue *queue) {
+    // set head pointer to NULL to indicate an empty queue
     queue->head = NULL;
+    // initialize queue size to 0
     queue->size = 0;
+    // initialize the semaphore for mutual exclusion with an initial value of 1
+    sem_init(&queue->mutex, 0, 1);
 }
 
 /**
@@ -60,6 +67,8 @@ void event_queue_clean(EventQueue *queue) {
 
     queue->head = NULL;
     queue->size = 0;
+    
+    sem_destroy(&queue->mutex);
 }
 
 /**
@@ -74,10 +83,13 @@ void event_queue_push(EventQueue *queue, const Event *event) {
     if (queue == NULL || event == NULL){
         return;
     }
+
+    sem_wait(&queue->mutex);
     
     // initalizations
     EventNode *new_node = (EventNode*)malloc(sizeof(EventNode));
     if (new_node == NULL) {
+        sem_post(&queue->mutex);
         return;
     }
     new_node->event = *event;
@@ -106,6 +118,8 @@ void event_queue_push(EventQueue *queue, const Event *event) {
 
     // increment queue size
     queue->size++;
+
+    sem_post(&queue->mutex);
 }
 
 /**
@@ -118,8 +132,11 @@ void event_queue_push(EventQueue *queue, const Event *event) {
  * @return               Non-zero if an event was successfully popped; zero otherwise.
  */
 int event_queue_pop(EventQueue *queue, Event *event) {
+    sem_wait(&queue->mutex);
+
     if (queue->head == NULL) {
         // no events in the queue
+        sem_post(&queue->mutex);
         return 0;
     }
     
@@ -133,6 +150,8 @@ int event_queue_pop(EventQueue *queue, Event *event) {
 
     // decrement the size of the queue
     queue->size--;
+
+    sem_post(&queue->mutex);
     
     // event successfully popped
     return 1;

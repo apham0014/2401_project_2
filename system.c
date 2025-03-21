@@ -121,6 +121,7 @@ static int system_convert(System *system) {
     if (consumed_resource == NULL) {
         status = STATUS_OK;
     } else {
+        sem_wait(&consumed_resource->mutex);
         // Attempt to consume the required resources
         if (consumed_resource->amount >= amount_consumed) {
             consumed_resource->amount -= amount_consumed;
@@ -128,6 +129,7 @@ static int system_convert(System *system) {
         } else {
             status = (consumed_resource->amount == 0) ? STATUS_EMPTY : STATUS_INSUFFICIENT;
         }
+        sem_post(&consumed_resource->mutex);
     }
 
     if (status == STATUS_OK) {
@@ -194,6 +196,8 @@ static int system_store_resources(System *system) {
 
     amount_to_store = system->amount_stored;
 
+    sem_wait(&produced_resource->mutex);
+
     // Calculate available space
     available_space = produced_resource->max_capacity - produced_resource->amount;
 
@@ -206,6 +210,8 @@ static int system_store_resources(System *system) {
         produced_resource->amount += available_space;
         system->amount_stored = amount_to_store - available_space;
     }
+
+    sem_post(&produced_resource->mutex);
 
     if (system->amount_stored != 0) {
         return STATUS_CAPACITY;
@@ -289,6 +295,12 @@ void system_array_add(SystemArray *array, System *system) {
     }
 }
 
+
+/**
+ * Executes a system in a thread.
+ *
+ * @param[in]     arg  A pointer to the System object that the thread will operate on. 
+ */
 void *system_thread(void *arg) {
     System *system = (System *)arg;
     while(system->status != TERMINATE) {

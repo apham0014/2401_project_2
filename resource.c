@@ -36,6 +36,8 @@ void resource_create(Resource **resource, const char *name, int amount, int max_
     // initialize other attributes
     (*resource)->amount = amount;
     (*resource)->max_capacity = max_capacity;
+
+    sem_init(&(*resource)->mutex, 0, 1);
 }
 
 /**
@@ -50,6 +52,8 @@ void resource_destroy(Resource *resource) {
         return;
     }
     
+    sem_destroy(&resource->mutex);
+
     free(resource->name);
     free(resource);
 }
