@@ -37,11 +37,11 @@ void event_init(Event *event, System *system, Resource *resource, int status, in
  * @param[out] queue  Pointer to the `EventQueue` to initialize.
  */
 void event_queue_init(EventQueue *queue) {
-    // set head pointer to NULL to indicate an empty queue
+    // set the queue head to NULL, indicating an empty queue
     queue->head = NULL;
-    // initialize queue size to 0
+    // initialize the queue size to 0
     queue->size = 0;
-    // initialize the semaphore for mutual exclusion with an initial value of 1
+    // initialize the semaphore for thread safe access to the queue
     sem_init(&queue->mutex, 0, 1);
 }
 
@@ -53,21 +53,27 @@ void event_queue_init(EventQueue *queue) {
  * @param[in,out] queue  Pointer to the `EventQueue` to clean.
  */
 void event_queue_clean(EventQueue *queue) {
+    // return if the queue is NULL
     if (queue == NULL) {
         return;
     }
+
+    // declare pointers to traverse through the queue
     EventNode *current = queue->head;
     EventNode *next;
 
+    // iterate through each node in the queue, freeing memory
     while (current != NULL) {
         next = current->next;
         free(current);
         current = next;
     }
 
+    // reset the queue to an empty state
     queue->head = NULL;
     queue->size = 0;
-    
+
+    // destroy the semaphore to release resources
     sem_destroy(&queue->mutex);
 }
 
@@ -80,45 +86,51 @@ void event_queue_clean(EventQueue *queue) {
  * @param[in]     event  Pointer to the `Event` to push onto the queue.
  */
 void event_queue_push(EventQueue *queue, const Event *event) {
+    // return if the queue or event is NULL
     if (queue == NULL || event == NULL){
         return;
     }
 
+    // wait for semaphore to ensure thread-safety
     sem_wait(&queue->mutex);
     
-    // initalizations
+    // initialize a new node for the event
     EventNode *new_node = (EventNode*)malloc(sizeof(EventNode));
+    
+    // if malloc fails, release the semaphore and return
     if (new_node == NULL) {
         sem_post(&queue->mutex);
         return;
     }
+    // assign the event passed in the parameter to the new node's event
     new_node->event = *event;
 
-    // case 1: our queue is empty or our event belongs at head.
+    // Case 1: queue is empty or event belongs at the head
     if (queue->head == NULL || event->priority > queue->head->event.priority) {
         new_node->next = queue->head;
         queue->head = new_node;
-
     }
-
-    // case 2: our queue is not empty.
+    // Case 2: queue is not empty, need to find correct position
     else {
+        // declare pointers for traversal
         EventNode *current = queue->head->next;
         EventNode *previous = queue->head;
 
-        // now we must perform traversals     
-        while (current !=NULL && current->event.priority >= new_node->event.priority) {
+        // perform traversal to find the correct position
+        while (current != NULL && current->event.priority >= new_node->event.priority) {
             current = current->next;
             previous = previous->next;
         }
 
+        // insert the new node into the queue
         new_node->next = current;
         previous->next = new_node;
     }
 
-    // increment queue size
+    // increment the queue size
     queue->size++;
 
+    // release the semaphore after modifying the queue
     sem_post(&queue->mutex);
 }
 
@@ -132,10 +144,11 @@ void event_queue_push(EventQueue *queue, const Event *event) {
  * @return               Non-zero if an event was successfully popped; zero otherwise.
  */
 int event_queue_pop(EventQueue *queue, Event *event) {
+    // wait for semaphore to ensure thread safety
     sem_wait(&queue->mutex);
 
+    // if no events in the queue, release the semaphore and return 0
     if (queue->head == NULL) {
-        // no events in the queue
         sem_post(&queue->mutex);
         return 0;
     }
@@ -151,6 +164,7 @@ int event_queue_pop(EventQueue *queue, Event *event) {
     // decrement the size of the queue
     queue->size--;
 
+    // release the semaphore after modifying the queue
     sem_post(&queue->mutex);
     
     // event successfully popped

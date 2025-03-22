@@ -1,3 +1,6 @@
+// Ahmad Baytamouni 101335293
+// Austin Pham 101333594
+
 #include "defs.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -32,6 +35,7 @@ void manager_init(Manager *manager) {
  * @param[in,out] manager  Pointer to the `Manager` to clean.
  */
 void manager_clean(Manager *manager) {
+    // clean system array, resource array, and event queue
     system_array_clean(&manager->system_array);
     resource_array_clean(&manager->resource_array);
     event_queue_clean(&manager->event_queue);
@@ -201,10 +205,22 @@ void display_simulation_state(Manager *manager) {
     fflush(stdout);
 }
 
+/**
+ * Runs the manager simulation in a separate thread.
+ *
+ * This function repeatedly calls `manager_run` while the simulation is running
+ * (indicated by the `simulation_running` flag). It stops when the flag is zero.
+ *
+ * @param[in]   arg  Pointer to the `Manager` object.
+ * @returns     NULL  when the thread terminates.
+ */
 void *manager_thread(void *arg) {
+    // cast the argument to Manager pointer
     Manager *manager = (Manager *)arg;
+    // run the manager until the simulation is stopped (equal to 0)
     while (manager->simulation_running != 0) {
         manager_run(manager);
     }
+    // return NULL to indicate thread has finished execution
     return NULL;
 }

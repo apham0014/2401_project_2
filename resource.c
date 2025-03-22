@@ -1,3 +1,6 @@
+// Ahmad Baytamouni 101335293
+// Austin Pham 101333594
+
 #include "defs.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,24 +22,29 @@
 void resource_create(Resource **resource, const char *name, int amount, int max_capacity) {
     // allocate memory for resource struct
     *resource = (Resource *)malloc(sizeof(Resource));
+    // return if malloc fails
     if (*resource == NULL) {
         return;
     }
     
     // allocate memory for name
     (*resource)->name = (char *)malloc(strlen(name) + 1);
+
+    // if malloc fails, free the resource and return
     if ((*resource)->name == NULL) {
         free(*resource);
         *resource = NULL;
         return;
     }
 
+    // copy the name into the newly allocated memory
     strcpy((*resource)->name, name);
 
     // initialize other attributes
     (*resource)->amount = amount;
     (*resource)->max_capacity = max_capacity;
 
+    // initialize the mutex for thread safety
     sem_init(&(*resource)->mutex, 0, 1);
 }
 
@@ -48,13 +56,17 @@ void resource_create(Resource **resource, const char *name, int amount, int max_
  * @param[in,out] resource  Pointer to the `Resource` to be destroyed.
  */
 void resource_destroy(Resource *resource) {
+    // return if the resource is NULL
     if (resource == NULL) {
         return;
     }
     
+    // destroy the semaphore associated with the resource
     sem_destroy(&resource->mutex);
 
+    // free the dynamically allocated memory for the resource name
     free(resource->name);
+    // free the memory for the resource struct itself
     free(resource);
 }
 
@@ -82,15 +94,15 @@ void resource_amount_init(ResourceAmount *resource_amount, Resource *resource, i
  * @param[out] array  Pointer to the `ResourceArray` to initialize.
  */
 void resource_array_init(ResourceArray *array) {
-
-    // allocate memory for array of pointers.
+    // allocate memory for array of pointers
     array->resources = (Resource **)malloc(sizeof(Resource *) * 1);
 
+    // check if memory allocation failed
     if (array->resources == NULL) {
         return;
     }
     
-    // initalize other attributes.
+    // initalize other attributes
     array->size = 0;
     array->capacity = 1;
 }
@@ -104,10 +116,11 @@ void resource_array_init(ResourceArray *array) {
  * @param[in,out] array  Pointer to the `ResourceArray` to clean.
  */
 void resource_array_clean(ResourceArray *array) {
+    // iterate through the array and destroy each resource
     for (int i = 0; i < array->size; i++) {
         resource_destroy(array->resources[i]);
     }
-
+    // free the array memory
     free(array->resources);
 }
 
@@ -121,32 +134,37 @@ void resource_array_clean(ResourceArray *array) {
  * @param[in]     resource  Pointer to the `Resource` to add.
  */
 void resource_array_add(ResourceArray *array, Resource *resource) {
-    // case 1: sufficient capacity
+    // Case 1: sufficient capacity
     if (array->size < array->capacity) {
+        // add the resource to the array
         array->resources[array->size] = resource;
+        // increase the size of the array
         array->size++;
     }
-    
-    // case 2: insufficient capacity
+    // Case 2: insufficient capacity
     else {
-        // we must reallocate memory for the array.
+        // allocate memory for a larger array (doubling the capacity)
         Resource **temp_resources = (Resource **)malloc(sizeof(Resource *) * ((array->capacity)*2));
+        // check if memory allocation failed
         if (temp_resources == NULL){
             return;
         }
         
-        // then we copy our resource struct into our new array.
+        // copy resources from the old array to the new one
         for (int i = 0; i < array->size; i++){
             temp_resources[i] = array->resources[i];
         }
-        
+
+        // free the old array memory
         free(array->resources);
+        // update the resources array to point to the new one
         array->resources = temp_resources;
+        // update the capacity to the new size
         array->capacity *= 2;
 
-        // finally we add our resource indicated in the parameter.
+        // add the new resource
         array->resources[array->size] = resource;
+        // increase the size of the array
         array->size++;
     }
-    
 }

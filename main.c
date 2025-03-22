@@ -1,3 +1,6 @@
+// Ahmad Baytamouni 101335293
+// Austin Pham 101333594
+
 #include "defs.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -11,31 +14,23 @@ int main(void) {
     manager_init(&manager);
     load_data(&manager);
 
+    // create the manager thread
     pthread_t manager_t;
-    pthread_t system_t[manager.system_array.size];
-
     pthread_create(&manager_t, NULL, manager_thread, &manager);
- 
+
+    // create one thread for each system in the system array
+    pthread_t system_t[manager.system_array.size];
     for (int i = 0; i < manager.system_array.size; i++) {
         pthread_create(&system_t[i], NULL, system_thread, manager.system_array.systems[i]);
     }
 
+    // wait for the manager thread to finish
     pthread_join(manager_t, NULL);
 
+    // wait for each system thread to finish
     for (int i = 0; i < manager.system_array.size; i++) {
         pthread_join(system_t[i], NULL);
     }
-
-    // int iteration = 0;
-    // int max_iterations = 10;
-
-    // while (manager.simulation_running && iteration < max_iterations) {
-    //     manager_run(&manager);
-    //     for (int i = 0; i < manager.system_array.size; ++i) {
-    //         system_run(manager.system_array.systems[i]);
-    //     }
-    //     iteration++;
-    // }
 
     manager_clean(&manager);
     return 0;

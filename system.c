@@ -1,3 +1,6 @@
+// Ahmad Baytamouni 101335293
+// Austin Pham 101333594
+
 #include "defs.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -25,20 +28,26 @@ static int system_store_resources(System *);
  * @param[in]  event_queue     Pointer to the `EventQueue` for event handling.
  */
 void system_create(System **system, const char *name, ResourceAmount consumed, ResourceAmount produced, int processing_time, EventQueue *event_queue) {
-
+    // allocate memory for the system struct
     *system = (System *)malloc(sizeof(System));
+    // check if memory allocation failed
     if (*system == NULL) {
         return;
     }
 
+    // allocate memory for the name string
     (*system)->name = (char *)malloc(strlen(name) + 1);
+    // if memory allocation fails, free the system and return
     if ((*system)->name == NULL) {
         free(*system);
         *system = NULL;
         return;
     }
 
+    // copy the name into the allocated space
     strcpy((*system)->name, name);
+
+    // initialize other attributes
     (*system)->consumed = consumed;
     (*system)->produced = produced;
     (*system)->amount_stored = 0;
@@ -55,13 +64,15 @@ void system_create(System **system, const char *name, ResourceAmount consumed, R
  * @param[in,out] system  Pointer to the `System` to be destroyed.
  */
 void system_destroy(System *system) {
+    // return if system is NULL
     if (system == NULL){
         return;
     }
+    // free the memory allocated for the name
     free(system->name);
+    // free the memory allocated for the system struct
     free(system);
 }
-
 
 /**
  * Runs the main loop for a `System`.
@@ -229,14 +240,15 @@ static int system_store_resources(System *system) {
  * @param[out] array  Pointer to the `SystemArray` to initialize.
  */
 void system_array_init(SystemArray *array) {
-    // allocate memory for array of pointers.
+    // allocate memory for array of pointers with initial capacity of 1
     array->systems = (System **)malloc(sizeof(System *) * 1);
 
+    // return if memory allocation fails
     if (array->systems == NULL) {
         return;
     }
     
-    // initalize other attributes.
+    // initalize other attributes
     array->size = 0;
     array->capacity = 1;
 }
@@ -249,10 +261,11 @@ void system_array_init(SystemArray *array) {
  * @param[in,out] array  Pointer to the `SystemArray` to clean.
  */
 void system_array_clean(SystemArray *array) {
+    // iterate through the array and destroy each system
     for (int i = 0; i < array->size; i++) {
         system_destroy(array->systems[i]);
     }
-
+    // free the memory allocated for the array of system pointers
     free(array->systems);
 }
 
@@ -266,45 +279,52 @@ void system_array_clean(SystemArray *array) {
  * @param[in]     system  Pointer to the `System` to add.
  */
 void system_array_add(SystemArray *array, System *system) {
-    // case 1: sufficient capacity
+    // Case 1: sufficient capacity
     if (array->size < array->capacity) {
+        // add system to the array and increase the size
         array->systems[array->size] = system;
         array->size++;
     }
     
-    // case 2: insufficient capacity
+    // Case 2: insufficient capacity
     else {
-        // we must reallocate memory for the array.
+        // we must reallocate memory for the array
         System **temp_systems = (System **)malloc(sizeof(System *) * ((array->capacity)*2));
         if (temp_systems == NULL){
             return;
         }
         
-        // then we copy our system struct into our new array.
+        // copy existing systems to the new array
         for (int i = 0; i < array->size; i++){
             temp_systems[i] = array->systems[i];
         }
         
+        // free the old array and assign the new array to the systemarray
         free(array->systems);
         array->systems = temp_systems;
         array->capacity *= 2;
 
-        // finally we add our system indicated in the parameter.
+        // add the new system to the resized array.
         array->systems[array->size] = system;
         array->size++;
     }
 }
 
-
 /**
- * Executes a system in a thread.
+ * Runs the `system_thread` for a given `System`.
  *
- * @param[in]     arg  A pointer to the System object that the thread will operate on. 
+ * Continuously executes the `system_run` function for the given `System` until its status is `TERMINATE`.
+ *
+ * @param[in] arg  Pointer to the `System` object.
+ * @return    NULL when the thread terminates.
  */
 void *system_thread(void *arg) {
+    // cast argument to system pointer
     System *system = (System *)arg;
+    // run the system until its status is terminate
     while(system->status != TERMINATE) {
         system_run(system);
     }
+     // return NULL to indicate thread has finished execution
     return NULL;
 }
